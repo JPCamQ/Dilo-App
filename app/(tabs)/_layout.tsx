@@ -1,59 +1,87 @@
-import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import CustomTabBar from '@/components/navigation/CustomTabBar';
+import { Colors } from '@/constants/Colors';
+import { Tabs } from 'expo-router';
+import { Home, LayoutGrid, Mic } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { Platform, StyleSheet } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+// Keep the VoiceTabButton for reference (used internally by CustomTabBar now)
+const VoiceTabButton = ({ focused }: { focused: boolean }) => {
+  const scale = useSharedValue(1);
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: focused ? 1.15 : scale.value }],
+  }));
 
   return (
+    <Animated.View style={[styles.centralIconContainer, animatedStyle]}>
+      <Mic size={26} color="#FFF" />
+    </Animated.View>
+  );
+};
+
+export default function TabLayout() {
+  return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Inicio',
+          tabBarIcon: ({ color }) => <Home size={24} color={color} />
         }}
       />
+
       <Tabs.Screen
-        name="two"
+        name="voice-pivot"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Voz',
+          tabBarIcon: ({ focused }) => <VoiceTabButton focused={focused} />,
+          tabBarLabel: () => null
+        }}
+      />
+
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'Más',
+          tabBarIcon: ({ color }) => <LayoutGrid size={24} color={color} />
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  centralIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.accent.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'ios' ? 32 : 24,
+    shadowColor: Colors.accent.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 4,
+    borderColor: Colors.background.primary,
+  },
+});

@@ -1,39 +1,72 @@
 {
   "expo": {
-    "name": "temp_expo",
-    "slug": "temp_expo",
+    "name": "Dilo App",
+    "slug": "dilo-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tempexpo",
-    "userInterfaceStyle": "automatic",
+    "scheme": "diloapp",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0D0D0D"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.diloapp.finance",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Dilo App necesita reconocimiento de voz para registrar transacciones",
+        "NSMicrophoneUsageDescription": "Dilo App necesita el micrófono para escuchar tus comandos de voz"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0D0D0D"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.diloapp.finance",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.ico"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.728546369380-8k8k01optri10h3sdaov1ro3ov3amre2"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Dilo App necesita el micrófono para escuchar tus comandos de voz",
+          "speechRecognitionPermission": "Dilo App necesita reconocimiento de voz para registrar transacciones"
+        }
+      ],
+      "expo-web-browser"
     ],
+    "extra": {
+      "googleClientId": "728546369380-8k8k01optri10h3sdaov1ro3ov3amre2.apps.googleusercontent.com",
+      "router": {},
+      "eas": {
+        "projectId": "f2647cfd-9437-4590-9d61-5822196189e3"
+      }
+    },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "jpcamqfx"
   }
 }
