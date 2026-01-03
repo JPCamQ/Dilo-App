@@ -34,8 +34,9 @@ export interface GoogleUser {
 // ============================================
 
 export const configureGoogleSignIn = () => {
-    if (!GoogleSignin) {
-        console.warn('[Auth] Cannot configure - native module not available');
+    // Safety check for Expo Go - module may load but methods don't exist
+    if (!GoogleSignin || typeof GoogleSignin.configure !== 'function') {
+        console.warn('[Auth] Cannot configure - GoogleSignin.configure not available (Expo Go?)');
         return;
     }
 

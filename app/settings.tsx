@@ -1,7 +1,7 @@
 // Dilo App - Settings Screen (Native Google Auth)
 import { Colors } from '@/constants/Colors';
 import { fetchBcvRate } from '@/services/bcv';
-import { downloadBackup, getCurrentUser, isGoogleSignInAvailable, signIn, signOut, uploadBackup } from '@/services/googleAuthService';
+import { configureGoogleSignIn, downloadBackup, getCurrentUser, isGoogleSignInAvailable, signIn, signOut, uploadBackup } from '@/services/googleAuthService';
 import * as BackupService from '@/services/localBackupService';
 import { getOpenRouterApiKey, setOpenRouterApiKey } from '@/services/openRouterService';
 import { useAppStore } from '@/stores/useAppStore';
