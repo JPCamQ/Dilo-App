@@ -34,6 +34,19 @@ yarn-error.*
 .env*.local
 .env
 
+# Sensitive files - NEVER commit these
+*.secret
+*.secrets
+*credentials*.json
+*secrets*.json
+google-services.json
+GoogleService-Info.plist
+
+# API keys and config with secrets
+Dilo App.txt
+secrets.txt
+api-keys.txt
+
 # typescript
 *.tsbuildinfo
 
