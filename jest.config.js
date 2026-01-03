@@ -1,26 +1,38 @@
-// Jest Configuration for Dilo App - Node environment
+// Jest Configuration for Dilo App
+// Using ts-jest for TypeScript without React Native runtime issues
+
+/** @type {import('jest').Config} */
 module.exports = {
-    // Use Node environment (simpler, avoids React Native setup issues)
+    preset: 'ts-jest',
     testEnvironment: 'node',
 
-    // Transform TypeScript
-    transform: {
-        '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['@babel/preset-typescript'] }],
-    },
+    // Root directory
+    rootDir: './',
 
     // Module name mapping for path aliases (@/)
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
     },
 
-    // Don't transform node_modules
+    // Transform TypeScript
+    transform: {
+        '^.+\\.tsx?$': ['ts-jest', {
+            tsconfig: {
+                module: 'commonjs',
+                esModuleInterop: true,
+                allowSyntheticDefaultImports: true,
+            },
+        }],
+    },
+
+    // Skip node_modules
     transformIgnorePatterns: [
-        'node_modules/',
+        '/node_modules/',
     ],
 
     // Test file patterns
     testMatch: [
-        '**/__tests__/**/*.test.[jt]s?(x)',
+        '**/__tests__/**/*.test.ts',
     ],
 
     // Module file extensions
@@ -29,6 +41,9 @@ module.exports = {
     // Clear mocks between tests
     clearMocks: true,
 
-    // Force exit after tests complete
+    // Force exit after tests
     forceExit: true,
+
+    // Setup file for mocks
+    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };

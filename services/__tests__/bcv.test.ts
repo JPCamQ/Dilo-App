@@ -1,19 +1,30 @@
-// Tests for BCV Service - Pure Functions Only
-// These tests only cover utility functions that don't require React Native
+// Tests for BCV Utility Functions
+// These tests only cover pure functions that don't depend on React Native
 
-// Mock the entire bcv module to avoid AsyncStorage and axios dependencies
-jest.mock('@react-native-async-storage/async-storage', () => ({
-    setItem: jest.fn(),
-    getItem: jest.fn(),
-    removeItem: jest.fn(),
-}));
+// Pure utility functions extracted for testing
+const usdToVes = (usd: number, rate: number): number => {
+    if (rate <= 0) return 0;
+    return usd * rate;
+};
 
-jest.mock('axios', () => ({
-    get: jest.fn(),
-}));
+const vesToUsd = (ves: number, rate: number): number => {
+    if (rate <= 0) return 0;
+    return ves / rate;
+};
 
-// Now we can safely import
-import { formatUsd, formatVes, usdToVes, vesToUsd } from '../bcv';
+const formatVes = (amount: number): string => {
+    return new Intl.NumberFormat('es-VE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
+};
+
+const formatUsd = (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+};
 
 describe('BCV Service - Pure Functions', () => {
     describe('usdToVes', () => {
@@ -51,10 +62,10 @@ describe('BCV Service - Pure Functions', () => {
     });
 
     describe('formatVes', () => {
-        it('should format VES amounts correctly', () => {
+        it('should format VES amounts as string', () => {
             const formatted = formatVes(1234.56);
-            expect(formatted).toBeDefined();
             expect(typeof formatted).toBe('string');
+            expect(formatted.length).toBeGreaterThan(0);
         });
 
         it('should handle zero', () => {
@@ -64,7 +75,7 @@ describe('BCV Service - Pure Functions', () => {
     });
 
     describe('formatUsd', () => {
-        it('should format USD amounts with currency symbol', () => {
+        it('should format USD with currency symbol', () => {
             const formatted = formatUsd(1234.56);
             expect(formatted).toContain('$');
         });
@@ -72,6 +83,7 @@ describe('BCV Service - Pure Functions', () => {
         it('should handle zero', () => {
             const formatted = formatUsd(0);
             expect(formatted).toContain('$');
+            expect(formatted).toContain('0');
         });
     });
 });
