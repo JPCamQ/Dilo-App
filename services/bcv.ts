@@ -1,5 +1,18 @@
-// Dilo App - BCV API Service (Multi-source with fallbacks)
+// Dilo App - BCV API Service (Multi-source with persistent offline cache)
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+
+// ============================================
+// Cache Configuration
+// ============================================
+const CACHE_KEY = 'bcv_rate_cache';
+const CACHE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+interface CachedRate {
+    rate: number;
+    timestamp: number;
+    source: string;
+}
 
 // Helper to parse rate that might be string with comma or number
 const parseRate = (value: any): number | null => {
@@ -32,25 +45,62 @@ const API_SOURCES = [
     },
 ];
 
-// Updated fallback rate (Dec 30, 2024 - BCV Official is ~301.37)
+// Updated fallback rate (Jan 2, 2026 - BCV Official ~301.37)
 const FALLBACK_RATE = 301.37;
 
-let cachedRate: number | null = null;
-let lastFetchTime: Date | null = null;
-let lastSuccessfulSource: string | null = null;
-const CACHE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+// In-memory cache (faster than AsyncStorage for frequent reads)
+let memoryCache: CachedRate | null = null;
+
+// ============================================
+// Persistent Cache Functions
+// ============================================
+
+async function loadCacheFromStorage(): Promise<CachedRate | null> {
+    try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const parsed = JSON.parse(cached) as CachedRate;
+            memoryCache = parsed;
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('⚠️ Failed to load BCV cache from storage:', error);
+    }
+    return null;
+}
+
+async function saveCacheToStorage(cache: CachedRate): Promise<void> {
+    try {
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        memoryCache = cache;
+    } catch (error) {
+        console.warn('⚠️ Failed to save BCV cache to storage:', error);
+    }
+}
+
+function isCacheValid(cache: CachedRate | null): boolean {
+    if (!cache) return false;
+    const age = Date.now() - cache.timestamp;
+    return age < CACHE_DURATION_MS && cache.rate > 0;
+}
+
+// ============================================
+// Main Fetch Function with Offline Support
+// ============================================
 
 export async function fetchBcvRate(): Promise<number> {
-    // Check cache first
-    if (cachedRate && lastFetchTime) {
-        const timeSinceLastFetch = Date.now() - lastFetchTime.getTime();
-        if (timeSinceLastFetch < CACHE_DURATION_MS) {
-            console.log(`📦 Using cached rate: ${cachedRate} (from ${lastSuccessfulSource})`);
-            return cachedRate;
-        }
+    // 1. Load persistent cache if memory is empty
+    if (!memoryCache) {
+        await loadCacheFromStorage();
     }
 
-    // Try each API source
+    // 2. Return valid cache immediately (fresh data)
+    if (memoryCache && isCacheValid(memoryCache)) {
+        console.log(`📦 Using cached rate: ${memoryCache.rate} (from ${memoryCache.source})`);
+        return memoryCache.rate;
+    }
+
+    // 3. Try network fetch from multiple sources
     for (const source of API_SOURCES) {
         try {
             console.log(`🔄 Trying ${source.name}...`);
@@ -59,19 +109,20 @@ export async function fetchBcvRate(): Promise<number> {
                 timeout: 15000, // 15s timeout for slower connections
                 headers: {
                     'Accept': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36',
                     'Cache-Control': 'no-cache'
                 }
             });
 
-            console.log(`📥 ${source.name} response:`, JSON.stringify(response.data).substring(0, 200));
-
             const rate = source.parser(response.data);
 
             if (typeof rate === 'number' && rate > 0 && rate < 10000) {
-                cachedRate = rate;
-                lastFetchTime = new Date();
-                lastSuccessfulSource = source.name;
+                const newCache: CachedRate = {
+                    rate,
+                    timestamp: Date.now(),
+                    source: source.name,
+                };
+                await saveCacheToStorage(newCache);
                 console.log(`✅ BCV Rate from ${source.name}: Bs. ${rate}`);
                 return rate;
             } else {
@@ -83,18 +134,57 @@ export async function fetchBcvRate(): Promise<number> {
         }
     }
 
-    // All APIs failed - use cache if available
-    if (cachedRate && cachedRate > 0) {
-        console.log(`📦 All APIs failed, using cached rate: ${cachedRate}`);
-        return cachedRate;
+    // 4. All APIs failed - use expired cache if available (offline mode)
+    if (memoryCache && memoryCache.rate > 0) {
+        console.log(`📴 OFFLINE: Using expired cached rate: ${memoryCache.rate} (from ${memoryCache.source})`);
+        return memoryCache.rate;
     }
 
-    // Last resort - fallback rate
-    console.log(`⚠️ All APIs failed, using fallback: ${FALLBACK_RATE}`);
-    cachedRate = FALLBACK_RATE;
-    lastFetchTime = new Date();
-    lastSuccessfulSource = 'Fallback';
+    // 5. Load from storage as last attempt
+    const storedCache = await loadCacheFromStorage();
+    if (storedCache && storedCache.rate > 0) {
+        console.log(`📴 OFFLINE: Using stored rate: ${storedCache.rate}`);
+        return storedCache.rate;
+    }
+
+    // 6. Last resort - hardcoded fallback
+    console.log(`⚠️ All sources failed, using fallback: ${FALLBACK_RATE}`);
+    const fallbackCache: CachedRate = {
+        rate: FALLBACK_RATE,
+        timestamp: Date.now(),
+        source: 'Fallback',
+    };
+    await saveCacheToStorage(fallbackCache);
     return FALLBACK_RATE;
+}
+
+// ============================================
+// Check if currently using cached/offline rate
+// ============================================
+
+export function isUsingCachedRate(): boolean {
+    if (!memoryCache) return false;
+    return !isCacheValid(memoryCache);
+}
+
+export function getCacheInfo(): { source: string; age: string; isOffline: boolean } | null {
+    if (!memoryCache) return null;
+    const ageMs = Date.now() - memoryCache.timestamp;
+    const ageMinutes = Math.floor(ageMs / 60000);
+    const ageHours = Math.floor(ageMinutes / 60);
+
+    let ageString: string;
+    if (ageHours > 0) {
+        ageString = `${ageHours}h ${ageMinutes % 60}m`;
+    } else {
+        ageString = `${ageMinutes}m`;
+    }
+
+    return {
+        source: memoryCache.source,
+        age: ageString,
+        isOffline: !isCacheValid(memoryCache),
+    };
 }
 
 export function usdToVes(usd: number, rate: number): number {
@@ -127,14 +217,17 @@ export function isRateFresh(lastUpdate: Date | null): boolean {
     return timeSinceUpdate < CACHE_DURATION_MS;
 }
 
-export function clearRateCache(): void {
-    cachedRate = null;
-    lastFetchTime = null;
-    lastSuccessfulSource = null;
+export async function clearRateCache(): Promise<void> {
+    memoryCache = null;
+    try {
+        await AsyncStorage.removeItem(CACHE_KEY);
+    } catch (error) {
+        console.warn('⚠️ Failed to clear BCV cache:', error);
+    }
 }
 
 export function getLastSource(): string | null {
-    return lastSuccessfulSource;
+    return memoryCache?.source ?? null;
 }
 
 export const BcvService = {
@@ -146,6 +239,9 @@ export const BcvService = {
     isRateFresh,
     clearCache: clearRateCache,
     getLastSource,
+    isUsingCachedRate,
+    getCacheInfo,
 };
 
 export default BcvService;
+
