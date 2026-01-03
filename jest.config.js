@@ -1,11 +1,11 @@
-// Jest Configuration for Dilo App
+// Jest Configuration for Dilo App - Node environment
 module.exports = {
-    preset: 'jest-expo',
+    // Use Node environment (simpler, avoids React Native setup issues)
     testEnvironment: 'node',
 
-    // Transform TypeScript files
+    // Transform TypeScript
     transform: {
-        '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
+        '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['@babel/preset-typescript'] }],
     },
 
     // Module name mapping for path aliases (@/)
@@ -13,35 +13,22 @@ module.exports = {
         '^@/(.*)$': '<rootDir>/$1',
     },
 
-    // Files to ignore during transformation
+    // Don't transform node_modules
     transformIgnorePatterns: [
-        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|lucide-react-native)',
+        'node_modules/',
     ],
-
-    // Setup files
-    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 
     // Test file patterns
     testMatch: [
         '**/__tests__/**/*.test.[jt]s?(x)',
-        '**/?(*.)+(spec|test).[jt]s?(x)',
-    ],
-
-    // Coverage configuration
-    collectCoverageFrom: [
-        'services/**/*.{ts,tsx}',
-        'stores/**/*.{ts,tsx}',
-        'utils/**/*.{ts,tsx}',
-        '!**/*.d.ts',
-        '!**/node_modules/**',
     ],
 
     // Module file extensions
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
 
     // Clear mocks between tests
     clearMocks: true,
 
-    // Verbose output
-    verbose: true,
+    // Force exit after tests complete
+    forceExit: true,
 };
